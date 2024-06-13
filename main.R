@@ -5,8 +5,37 @@ library(dplyr)
 library(reshape2)
 library(httr)
 
-# Load the dataset
-planets <- read.csv("data/hwc.csv")
+# Function to fetch data from the API
+fetch_planets_data <- function() {
+  res <- GET("http://localhost:8000/planets")
+  if (status_code(res) == 200) {
+    data <- content(res, as = "text")
+    data <- fromJSON(data)
+    return(data)
+  } else {
+    stop("Failed to fetch data from the API")
+  }
+}
+
+# Fetch the data once at startup and store it in a reactive value
+planets <- reactiveVal()
+
+observe({
+  tryCatch({
+    print("Fetching data from API...")  # Debugging statement
+    data <- fetch_planets_data()
+    print("Data fetched successfully")  # Debugging statement
+    planets(data)
+  }, error = function(e) {
+    print(paste("Error fetching data: ", e$message))  # Debugging statement
+    showModal(modalDialog(
+      title = "Error",
+      paste("Failed to fetch data from the API:", e$message),
+      easyClose = TRUE,
+      footer = NULL
+    ))
+  })
+})
 
 # Define UI
 ui <- fluidPage(
