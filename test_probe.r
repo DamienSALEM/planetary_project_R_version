@@ -1,12 +1,4 @@
-# install.packages("httr")
-# install.packages("jsonlite")
-# install.packages("data.table")
-# install.packages("caret")
-# install.packages("sparklyr")
-# install.packages("dplyr")
-# install.packages("tidyr")
-# install.packages("purrr")
-# install.packages("stringr")
+
 
 library(httr)
 library(jsonlite)
