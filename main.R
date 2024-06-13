@@ -3,6 +3,7 @@ library(ggplot2)
 library(DT)
 library(dplyr)
 library(reshape2)
+library(httr)
 
 # Load the dataset
 planets <- read.csv("data/hwc.csv")
@@ -29,14 +30,16 @@ ui <- fluidPage(
       checkboxInput("habitable", "Show Habitable Planets Only", value = FALSE),
       checkboxInput("errorBars", "Include Error Bars", value = FALSE),
       selectInput("plotType", "Select Plot Type:",
-                  choices = c("Scatter Plot", "Histogram", "Density Plot", "Box Plot"))
+                  choices = c("Scatter Plot", "Histogram", "Density Plot", "Box Plot")),
+      actionButton("getData", "Predict planet")
     ),
     mainPanel(
       tabsetPanel(
         tabPanel("Plot", plotOutput("mainPlot")),
         tabPanel("Summary Statistics", verbatimTextOutput("summaryStats")),
         tabPanel("Data Table", DTOutput("dataTable")),
-        tabPanel("Correlation Matrix", plotOutput("corrMatrix"))
+        tabPanel("Correlation Matrix", plotOutput("corrMatrix")),
+        tabPanel("API Data", verbatimTextOutput("apiData"))
       )
     )
   ),
@@ -146,7 +149,7 @@ server <- function(input, output) {
     numericData <- data[sapply(data, is.numeric)]
     numericData <- na.omit(numericData)  # Remove rows with NA values
     if (input$habitable) {
-      numericData <- numericData[data$P_HABITABLE == 2, ]
+      numericData <- numericData[data$P_HABITABLE == 1, ]
     }
     corr <- cor(numericData, use = "complete.obs")
     ggplot(melt(corr), aes(Var1, Var2, fill = value)) +
@@ -154,6 +157,17 @@ server <- function(input, output) {
       geom_text(aes(label = round(value, 2)), size = 3) +  # Add correlation coefficients
       scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
       theme_minimal()
+  })
+
+  # Event to make a GET request when the button is clicked
+  apiData <- eventReactive(input$getData, {
+    req <- GET("https://api.exemple.com/data") # Remplacez par l'URL de l'API réelle
+    content(req, "text")
+  })
+
+  # Output for the API data
+  output$apiData <- renderText({
+    apiData()
   })
 }
 
