@@ -39,6 +39,10 @@ And predict the habitability of the planet
 
 ## How to start the project
 
-1. Pull the repo
+1. Pull the repo: <https://github.com/DamienSALEM/planetary_project_R_version.git>
 2. In a R terminal: *source(api.R)*
 3. In an other R terminal: *runApp(main.R)*
+
+## Presentation
+
+<https://www.canva.com/design/DAGIF4RpkI8/YG4a_nve8gOjJ505ymuWxg/edit?utm_content=DAGIF4RpkI8&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton>
