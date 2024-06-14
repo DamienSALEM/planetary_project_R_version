@@ -22,3 +22,23 @@ Avoir une prédiction de l'habitabilité d'une planète en fonction de plusieurs
 1. Base de donnés Mongo Atlas
 2. API en R avec plumber et mongolite
 3. Front en R avec Shiny
+
+### IA
+
+Random Forest with R that take:
+
+1. Earth similarity index
+2. habitable zone
+3. luminosity of the star
+4. Gravity of the star
+5. Temperature of the planet
+6. Star mass
+7. Distance between star and planet
+
+And predict the habitability of the planet
+
+## How to start the project
+
+1. Pull the repo
+2. In a R terminal: *source(api.R)*
+3. In an other R terminal: *runApp(main.R)*

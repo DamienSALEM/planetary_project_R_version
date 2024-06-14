@@ -44,8 +44,8 @@ ui <- fluidPage(
     )
   ),
   fluidRow(
-    p("Data Source: Exoplanet Archive"),
-    p("Developed by: Your Name")
+    p("Data Source: Exoplanet Archive by NASA"),
+    p("Developed by: Lucas Monnet-Poupon, Simon Daniel, Ali-Haïdar ATIA and Damien Salem")
   )
 )
 
