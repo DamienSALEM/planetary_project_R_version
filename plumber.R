@@ -33,24 +33,19 @@ probe_request <- function() {
         data[[col]] <- NA
     }
 }
-
   data <- data[, cols_to_keep]
-
-  print('---------------------------------------------------------------------------------------')
-  print(data)
 
   model <- readRDS(model_path)
   
   preprocessed_data <- use_planets(data)
 
-  print('---------------------------------------------------------------------------------------')
-  print(preprocessed_data)
   
   preprocessed_matrix <- as.matrix(data)
   
   predictions <- predict(model, newdata = data, type = "prob")
+  numeric_prediction <- as.numeric(as.character(predictions))
+  cat(numeric_prediction)
   
-  print(predictions)
 
   return(predictions)
 

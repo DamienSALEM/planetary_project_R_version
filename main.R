@@ -181,9 +181,22 @@ server <- function(input, output, session) {
   })
   
   apiData <- eventReactive(input$getData, {
-    req <- GET("http://localhost:8000/prediction") 
-    content(req, "text")
+
+    req <- tryCatch({
+    response <- GET("http://localhost:8000/prediction")
+    stop_for_status(response)
+    data <- content(response, "parsed")
+
+    prob_non_habitable <- data[[1]]$`0`
+    prob_habitable <- data[[1]]$`1`
+    
+
+    paste("The probability of the planet being habitable is ",prob_non_habitable, "and the probability of the planet being non-habitable is ", prob_habitable)
+  }, error = function(e) {
+    paste("Not enough data to make a prediction")
   })
+  req
+})
   
   output$apiData <- renderText({
     apiData()
