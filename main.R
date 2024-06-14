@@ -4,8 +4,8 @@ library(DT)
 library(dplyr)
 library(reshape2)
 library(httr)
+library(jsonlite)
 
-# Function to fetch data from the API
 fetch_planets_data <- function() {
   res <- GET("http://localhost:8000/planets")
   if (status_code(res) == 200) {
@@ -17,49 +17,20 @@ fetch_planets_data <- function() {
   }
 }
 
-# Fetch the data once at startup and store it in a reactive value
-planets <- reactiveVal()
-
-observe({
-  tryCatch({
-    print("Fetching data from API...")  # Debugging statement
-    data <- fetch_planets_data()
-    print("Data fetched successfully")  # Debugging statement
-    planets(data)
-  }, error = function(e) {
-    print(paste("Error fetching data: ", e$message))  # Debugging statement
-    showModal(modalDialog(
-      title = "Error",
-      paste("Failed to fetch data from the API:", e$message),
-      easyClose = TRUE,
-      footer = NULL
-    ))
-  })
-})
-
-# Define UI
 ui <- fluidPage(
   titlePanel("Planetary Analysis Dashboard"),
   sidebarLayout(
     sidebarPanel(
-      selectInput("xvar", "Select X-axis variable:", choices = names(planets)),
-      selectInput("yvar", "Select Y-axis variable:", choices = names(planets)),
-      selectInput("detection", "Select Detection Method:",
-                  choices = unique(planets$P_DETECTION), multiple = TRUE),
-      selectInput("facility", "Select Discovery Facility:",
-                  choices = unique(planets$P_DISCOVERY_FACILITY), multiple = TRUE),
-      sliderInput("yearRange", "Select Year Range:",
-                  min = min(planets$P_YEAR), max = max(planets$P_YEAR),
-                  value = range(planets$P_YEAR), step = 1),
-      sliderInput("massRange", "Select Mass Range:",
-                  min = min(planets$P_MASS, na.rm = TRUE), max = max(planets$P_MASS, na.rm = TRUE),
-                  value = range(planets$P_MASS, na.rm = TRUE), step = 1),
-      sliderInput("maxPlanets", "Max Number of Planets to Display:",
-                  min = 10, max = 10000, value = 1000, step = 100),
+      selectInput("xvar", "Select X-axis variable:", choices = NULL),
+      selectInput("yvar", "Select Y-axis variable:", choices = NULL),
+      selectInput("detection", "Select Detection Method:", choices = NULL, multiple = TRUE),
+      selectInput("facility", "Select Discovery Facility:", choices = NULL, multiple = TRUE),
+      sliderInput("yearRange", "Select Year Range:", min = 0, max = 0, value = c(0, 0), step = 1),
+      sliderInput("massRange", "Select Mass Range:", min = 0, max = 0, value = c(0, 0), step = 1),
+      sliderInput("maxPlanets", "Max Number of Planets to Display:", min = 10, max = 10000, value = 1000, step = 100),
       checkboxInput("habitable", "Show Habitable Planets Only", value = FALSE),
       checkboxInput("errorBars", "Include Error Bars", value = FALSE),
-      selectInput("plotType", "Select Plot Type:",
-                  choices = c("Scatter Plot", "Histogram", "Density Plot", "Box Plot")),
+      selectInput("plotType", "Select Plot Type:", choices = c("Scatter Plot", "Histogram", "Density Plot", "Box Plot")),
       actionButton("getData", "Predict planet")
     ),
     mainPanel(
@@ -78,12 +49,37 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic
-server <- function(input, output) {
-
-  # Reactive dataset based on filters
+server <- function(input, output, session) {
+  
+  planets <- reactiveVal()
+  
+  observe({
+    tryCatch({
+      print("Fetching data from API...")
+      data <- fetch_planets_data()
+      print("Data fetched successfully")
+      planets(data)
+      
+      updateSelectInput(session, "xvar", choices = names(data))
+      updateSelectInput(session, "yvar", choices = names(data))
+      updateSelectInput(session, "detection", choices = unique(data$P_DETECTION))
+      updateSelectInput(session, "facility", choices = unique(data$P_DISCOVERY_FACILITY))
+      updateSliderInput(session, "yearRange", min = min(data$P_YEAR), max = max(data$P_YEAR), value = range(data$P_YEAR))
+      updateSliderInput(session, "massRange", min = min(data$P_MASS, na.rm = TRUE), max = max(data$P_MASS, na.rm = TRUE), value = range(data$P_MASS, na.rm = TRUE))
+      
+    }, error = function(e) {
+      print(paste("Error fetching data: ", e$message))
+      showModal(modalDialog(
+        title = "Error",
+        paste("Failed to fetch data from the API:", e$message),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    })
+  })
+  
   filteredData <- reactive({
-    data <- planets
+    data <- planets()
     if (!is.null(input$detection)) {
       data <- data[data$P_DETECTION %in% input$detection, ]
     }
@@ -95,20 +91,18 @@ server <- function(input, output) {
     if (input$habitable) {
       data <- data[data$P_HABITABLE == 1, ]
     }
-
-    # Limit the number of planets
+    
     if(nrow(data) > input$maxPlanets) {
       set.seed(123)
       data <- data %>% sample_n(input$maxPlanets)
     }
-
+    
     return(data)
   })
-
-  # Main plot
+  
   output$mainPlot <- renderPlot({
     data <- filteredData()
-
+    
     if (input$plotType == "Scatter Plot") {
       p <- ggplot(data, aes_string(x = input$xvar, y = input$yvar)) +
         geom_point(alpha = 0.5) +
@@ -118,7 +112,7 @@ server <- function(input, output) {
       if (input$errorBars && !is.null(data$P_MASS_ERROR_MIN) && !is.null(data$P_MASS_ERROR_MAX)) {
         p <- p + geom_errorbar(aes(ymin = P_MASS - P_MASS_ERROR_MIN, ymax = P_MASS + P_MASS_ERROR_MAX), width = 0.2)
       }
-      # Calculate and add correlation
+      
       if (is.numeric(data[[input$xvar]]) && is.numeric(data[[input$yvar]])) {
         corr <- cor(data[[input$xvar]], data[[input$yvar]], use = "complete.obs")
         p <- p + annotate("text", x = Inf, y = Inf, label = paste("Correlation:", round(corr, 2)),
@@ -156,49 +150,44 @@ server <- function(input, output) {
           theme_void()
       }
     }
-
+    
     print(p)
   })
-
-  # Summary statistics
+  
   output$summaryStats <- renderPrint({
     data <- filteredData()
     summary(data)
   })
-
-  # Data table
+  
   output$dataTable <- renderDT({
     data <- filteredData()
     datatable(data)
   })
-
-  # Correlation matrix
+  
+  # Matrice de correlation
   output$corrMatrix <- renderPlot({
     data <- filteredData()
     numericData <- data[sapply(data, is.numeric)]
-    numericData <- na.omit(numericData)  # Remove rows with NA values
+    numericData <- na.omit(numericData)
     if (input$habitable) {
       numericData <- numericData[data$P_HABITABLE == 1, ]
     }
     corr <- cor(numericData, use = "complete.obs")
     ggplot(melt(corr), aes(Var1, Var2, fill = value)) +
       geom_tile() +
-      geom_text(aes(label = round(value, 2)), size = 3) +  # Add correlation coefficients
+      geom_text(aes(label = round(value, 2)), size = 3) +  # Coefficient de corrélation
       scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
       theme_minimal()
   })
-
-  # Event to make a GET request when the button is clicked
+  
   apiData <- eventReactive(input$getData, {
-    req <- GET("https://api.exemple.com/data") # Remplacez par l'URL de l'API réelle
+    req <- GET("http://localhost:8000/prediction") 
     content(req, "text")
   })
-
-  # Output for the API data
+  
   output$apiData <- renderText({
     apiData()
   })
 }
 
-# Run the application
-shinyApp(ui = ui, server = server)
+runApp(shinyApp(ui = ui, server = server))
